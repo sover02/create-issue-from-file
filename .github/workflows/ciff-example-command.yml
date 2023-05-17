@@ -1,0 +1,55 @@
+name: Create Issue From File Example Command
+on:
+  repository_dispatch:
+    types: [ciff-example-command]
+jobs:
+  createIssueFromFile:
+    runs-on: ubuntu-latest
+    steps:
+      # Get the target repository and branch
+      - name: Get the target repository and branch
+        id: vars
+        run: |
+          repository=${{ github.event.client_payload.slash_command.repository }}
+          if [[ -z "$repository" ]]; then repository=${{ github.repository }}; fi
+          echo "repository=$repository" >> $GITHUB_OUTPUT
+          branch=${{ github.event.client_payload.slash_command.branch }}
+          if [[ -z "$branch" ]]; then branch="main"; fi
+          echo "branch=$branch" >> $GITHUB_OUTPUT
+
+      # Checkout the branch to test
+      - uses: actions/checkout@v3
+        with:
+          repository: ${{ steps.vars.outputs.repository }}
+          ref: ${{ steps.vars.outputs.branch }}
+
+      # Test create
+      - name: Create Issue From File
+        id: ciff
+        uses: ./
+        with:
+          title: An example issue
+          content-filepath: ./example-content/output.md
+          labels: |
+            report
+            automated issue
+          assignees: peter-evans
+
+      # Test update
+      - name: Create Issue From File
+        uses: ./
+        with:
+          issue-number: ${{ steps.ciff.outputs.issue-number }}
+          title: An example issue
+          content-filepath: ./example-content/output.md
+          labels: |
+            report
+            automated issue
+          assignees: peter-evans
+
+      - name: Add reaction
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+          comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
+          reaction-type: hooray
